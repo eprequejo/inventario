@@ -19,8 +19,8 @@ object ExcelHandle {
     val sheet = workbook.getSheetAt(0)
 
     //mutable lists
-    val countedUnits: ListBuffer[Unit] = ListBuffer()
-    val stockUnits: ListBuffer[Unit] = ListBuffer()
+    val countedUnits: ListBuffer[Option[Unit]] = ListBuffer()
+    val stockUnits: ListBuffer[Option[Unit]] = ListBuffer()
 
     //Iterate through each rows one by one
     val rowIterator = sheet.iterator()
@@ -30,21 +30,29 @@ object ExcelHandle {
 
       val row = rowIterator.next
 
-      val countedRef = row.getCell(0).getStringCellValue
-      val countedUnit = row.getCell(1).getNumericCellValue.toInt
-      countedUnits.append(Unit(countedRef, countedUnit))
+      val countedRef = readStringCell(row.getCell(0))
+      val countedUnit = readIntCell(row.getCell(1))
+      countedUnits.append(toOpUnit(countedRef, countedUnit))
 
-      val stockRef = row.getCell(2).getStringCellValue
-      //formatting
-      val stockRefFormatted = stockRef.split(" -")
-      val stockUnit = row.getCell(3).getNumericCellValue.toInt
-      stockUnits.append(Unit(stockRefFormatted(0), stockUnit))
+      val stockRef = readStringCell(row.getCell(2)).map(s => s.split(" - ")(0))
+      val stockUnit = readIntCell(row.getCell(3))
+      stockUnits.append(toOpUnit(stockRef, stockUnit))
 
     }
 
     file.close()
 
-    Inventario(countedUnits.toSet, stockUnits.toSet)
+    Inventario(countedUnits.toSet.flatten, stockUnits.toSet.flatten)
   }
-}
+
+  private def readStringCell(cell: Cell): Option[String] = Option(cell).map(c => c.getStringCellValue)
+  private def readIntCell(cell: Cell): Option[Int] = Option(cell).map(c => c.getNumericCellValue.toInt)
+
+  private def toOpUnit(ref: Option[String], num: Option[Int]): Option[Unit] =
+    (ref, num) match {
+      case (Some(r), Some(n)) => Some(Unit(r, n))
+      case _ => None
+    }
+
+ }
 
